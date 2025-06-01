@@ -1,10 +1,8 @@
 from sqlalchemy import Column, BigInteger, Integer, String, DateTime, Enum, Boolean, ForeignKey, Text, Date, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any
-
-Base = declarative_base()
+from app.db.base import Base
 
 class Website(Base):
     __tablename__ = "websites"

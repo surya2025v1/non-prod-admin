@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.website import Website
 from sqlalchemy import and_
+from datetime import datetime
 
 def upsert_website_for_user(db: Session, user_id: int, page_no: int, data: dict):
     # Try to find an existing website for this user and page_no
@@ -34,5 +35,65 @@ def upsert_website_for_user(db: Session, user_id: int, page_no: int, data: dict)
         db.refresh(website)
         return website
 
+def create_website_with_defaults(db: Session, user_id: int, data: dict):
+    """Create a new website record with default values for unspecified fields"""
+    # Set default values
+    defaults = {
+        'owner_id': user_id,
+        'name': data.get('organization_name', 'My Website'),
+        'status': 'draft',
+        'created_at': datetime.utcnow(),
+        'last_updated': datetime.utcnow(),
+        'primary_color': '#0ea5e9',
+        'secondary_color': '#f0f9ff',
+        'font': 'Inter',
+        'is_active': True,
+        'page_no': 1,
+        'photo_gallery_urls': [],
+        'services_offerings': [],
+        'team_members': [],
+        'social_media_links': {}
+    }
+    
+    # Merge provided data with defaults
+    fields = {**defaults, **{k: v for k, v in data.items() if hasattr(Website, k) and v is not None}}
+    
+    website = Website(**fields)
+    db.add(website)
+    db.commit()
+    db.refresh(website)
+    return website
+
+def update_website_by_id(db: Session, website_id: int, user_id: int, data: dict):
+    """Update an existing website by ID, ensuring the user owns it"""
+    # Find the website and verify ownership
+    website = db.query(Website).filter(and_(Website.id == website_id, Website.owner_id == user_id)).first()
+    
+    if not website:
+        return None
+    
+    # Update only provided fields
+    for key, value in data.items():
+        if hasattr(website, key) and value is not None:
+            setattr(website, key, value)
+    
+    website.last_updated = datetime.utcnow()
+    db.commit()
+    db.refresh(website)
+    return website
+
 def get_websites_for_user(db: Session, user_id: int):
-    return db.query(Website).filter(Website.owner_id == user_id).all() 
+    return db.query(Website).filter(Website.owner_id == user_id).all()
+
+def delete_website_by_id(db: Session, website_id: int, user_id: int):
+    """Delete a website by ID, ensuring the user owns it"""
+    # Find the website and verify ownership
+    website = db.query(Website).filter(and_(Website.id == website_id, Website.owner_id == user_id)).first()
+    
+    if not website:
+        return None
+    
+    # Delete the website
+    db.delete(website)
+    db.commit()
+    return True 

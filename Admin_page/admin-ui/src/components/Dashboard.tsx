@@ -1,46 +1,52 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiExternalLink, FiTrash2, FiCheckCircle, FiAlertCircle, FiTrendingUp, FiUsers, FiGlobe, FiDollarSign, FiStar, FiClock, FiZap, FiAward, FiTarget, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi';
+import { 
+  FiPlus, FiEdit2, FiExternalLink, FiTrash2, FiCheckCircle, FiAlertCircle, 
+  FiTrendingUp, FiUsers, FiGlobe, FiDollarSign, FiStar, FiClock, 
+  FiZap, FiAward, FiTarget, FiAlertTriangle, FiRefreshCw, FiArrowUp 
+} from 'react-icons/fi';
 import CreateWebsiteModal from './website/CreateWebsiteModal';
 import UpgradeModal from './website/UpgradeModal';
 import WebsiteDetailsModal from './website/WebsiteDetailsModal';
 import DeleteWebsiteModal from './website/DeleteWebsiteModal';
+import SetupProgress from './SetupProgress';
+import QuickActions from './QuickActions';
 import { getAuthState } from '../utils/auth';
-import { fetchMyWebsites, cacheWebsites, getCachedWebsites, clearWebsitesCache, refreshWebsiteData, type Website } from '../utils/api';
+import { fetchMyWebsites, cacheWebsites, getCachedWebsites, clearWebsitesCache, refreshWebsiteData, deleteWebsite, type Website } from '../utils/api';
 
 // Get username from auth state
 const { username } = getAuthState();
 
-// Mock analytics data (as requested to keep for now)
+// Enhanced analytics data with trend indicators
 const mockAnalytics = {
-  visitors: 2547,
-  pageViews: 8429,
-  conversionRate: 3.2,
-  revenue: 1250
+  visitors: { value: 2547, trend: 12.5, isUp: true },
+  pageViews: { value: 8429, trend: 8.3, isUp: true },
+  conversionRate: { value: 3.2, trend: -2.1, isUp: false },
+  revenue: { value: 1250, trend: 18.7, isUp: true }
 };
 
-const setupSteps = [
-  { name: 'Account Setup', label: 'Account Setup', done: true, icon: <FiUsers className="w-4 h-4" /> },
-  { name: 'First Website', label: 'First Website', done: true, icon: <FiStar className="w-4 h-4" /> },
-  { name: 'Domain Configuration', label: 'Domain Configuration', done: false, icon: <FiGlobe className="w-4 h-4" /> },
-  { name: 'Payment Setup', label: 'Payment Setup', done: false, icon: <FiDollarSign className="w-4 h-4" /> },
-];
+// Extend Website type to include tempIndex
+interface WebsiteWithTempIndex extends Website {
+  tempIndex?: number;
+}
 
-// Convert API website data to component format
+// Convert API website data to component format with enhanced analytics
 function convertApiWebsiteToComponent(apiWebsite: Website, index: number) {
+  console.log('Converting API website:', apiWebsite.domain, 'paid_till:', apiWebsite.paid_till);
+  
   return {
-    id: index + 1, // Use index as ID since API doesn't return ID
+    id: index + 1,
     name: apiWebsite.domain || `Website ${index + 1}`,
-    status: apiWebsite.status === 'published' ? 'Published' : 
-            apiWebsite.status === 'draft' ? 'Draft' : 'Archived',
-    lastUpdated: new Date().toISOString().split('T')[0], // Mock last updated
+    status: apiWebsite.status || 'draft',
+    lastUpdated: new Date().toISOString().split('T')[0],
     organizationName: apiWebsite.organization_name,
+    organization_name: apiWebsite.organization_name,
     organizationType: apiWebsite.organization_type,
     tagline: apiWebsite.tagline,
     contactEmail: apiWebsite.contact_email,
     contactPhone: apiWebsite.contact_phone,
     address: apiWebsite.address,
-    logo: null, // File objects not supported from API
+    logo: null,
     favicon: null,
     primaryColor: apiWebsite.primary_color,
     secondaryColor: apiWebsite.secondary_color,
@@ -58,9 +64,285 @@ function convertApiWebsiteToComponent(apiWebsite: Website, index: number) {
     social: apiWebsite.social_media_links || {},
     domain: apiWebsite.domain,
     paidTill: apiWebsite.paid_till,
-    analytics: mockAnalytics // Use mock analytics as requested
+    paid_till: apiWebsite.paid_till,
+    analytics: {
+      visitors: Math.floor(Math.random() * 1000) + 500,
+      pageViews: Math.floor(Math.random() * 3000) + 1000,
+      conversionRate: Math.random() * 5 + 1,
+      revenue: Math.floor(Math.random() * 500) + 100
+    },
+    tempIndex: (apiWebsite as any).tempIndex,
   };
 }
+
+// Enhanced payment status logic
+const getPaymentStatus = (paidTill: string | null) => {
+  console.log('getPaymentStatus called with:', paidTill);
+  
+  if (!paidTill || paidTill.trim() === '') {
+    console.log('Payment status: Pending (empty paid_till)');
+    return {
+      text: 'Pending',
+      color: 'bg-red-100 text-red-700 border-red-200',
+      icon: FiAlertCircle
+    };
+  }
+
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const paidDate = new Date(paidTill);
+  const paidMonth = paidDate.getMonth();
+  const paidYear = paidDate.getFullYear();
+
+  console.log('Date comparison:', {
+    today: today.toDateString(),
+    paidDate: paidDate.toDateString(),
+    currentMonth,
+    currentYear,
+    paidMonth,
+    paidYear
+  });
+
+  // Get last day of current month
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const endOfMonth = new Date(currentYear, currentMonth, lastDayOfMonth);
+
+  if (paidYear === currentYear && paidMonth === currentMonth) {
+    // Same month - show end of month deadline
+    console.log('Payment status: Due this month');
+    return {
+      text: `Make payment by ${endOfMonth.toLocaleDateString()}`,
+      color: 'bg-orange-100 text-orange-700 border-orange-200',
+      icon: FiClock
+    };
+  } else if (paidDate < today) {
+    // Past due
+    console.log('Payment status: Expired');
+    return {
+      text: 'Payment Expired, make payment immediately',
+      color: 'bg-red-100 text-red-700 border-red-200',
+      icon: FiAlertTriangle
+    };
+  } else {
+    // Future date - paid
+    console.log('Payment status: Paid');
+    return {
+      text: `Paid: ${paidDate.toLocaleDateString()}`,
+      color: 'bg-green-100 text-green-700 border-green-200',
+      icon: FiCheckCircle
+    };
+  }
+};
+
+// Enhanced Analytics Card Component
+const AnalyticsCard = ({ title, value, trend, icon: Icon, color, isUp, prefix = '' }: any) => (
+  <div className={`group bg-white rounded-xl shadow-soft border border-gray-100 p-4 lg:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] relative overflow-hidden`}>
+    {/* Background gradient */}
+    <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+    
+    <div className="relative">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`h-10 w-10 lg:h-12 lg:w-12 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center shadow-lg`}>
+          <Icon className="h-5 w-5 lg:h-6 lg:w-6 text-white" />
+        </div>
+        {trend !== undefined && (
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+            isUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            <FiArrowUp className={`w-3 h-3 ${!isUp ? 'rotate-180' : ''}`} />
+            {Math.abs(trend)}%
+          </div>
+        )}
+      </div>
+      
+      <div>
+        <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+        <p className="text-2xl lg:text-3xl font-bold text-gray-900">
+          {prefix}{typeof value === 'object' ? value.value.toLocaleString() : value.toLocaleString()}
+        </p>
+        {trend !== undefined && (
+          <p className={`text-xs mt-1 ${isUp ? 'text-green-600' : 'text-red-600'}`}>
+            {isUp ? '↗' : '↘'} {Math.abs(trend)}% from last month
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+// Enhanced Website Card Component with improved payment status
+const WebsiteCard = ({ site, onEdit, onView, onDelete }: any) => {
+  console.log('WebsiteCard site data:', {
+    name: site.name,
+    paid_till: site.paid_till,
+    paidTill: site.paidTill
+  });
+  
+  // Try both field names to ensure compatibility
+  const paidTillValue = site.paid_till || site.paidTill;
+  const paymentStatus = getPaymentStatus(paidTillValue);
+  const StatusIcon = paymentStatus.icon;
+
+  return (
+    <div className="group bg-white border border-gray-100 rounded-xl p-4 shadow-soft hover:shadow-lg transition-all duration-300 hover:scale-[1.01] relative overflow-hidden">
+      {/* Background gradient on hover */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      
+      <div className="relative flex items-center justify-between gap-4">
+        {/* Logo and Info */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="relative">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+              {site.name[0].toUpperCase()}
+            </div>
+            {site.status === 'published' && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow"></div>
+            )}
+          </div>
+          
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-base font-bold text-gray-900 truncate max-w-[150px] md:max-w-[200px]">{site.name}</h3>
+              {site.status === 'published' && <FiStar className="w-4 h-4 text-yellow-500" />}
+            </div>
+            
+            <p className="text-sm text-gray-600 truncate max-w-[150px] md:max-w-[200px] mb-2">
+              {site.organization_name || 'No organization name'}
+            </p>
+            
+            <div className="flex flex-wrap gap-2">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                site.status === 'published' 
+                  ? 'bg-green-100 text-green-800 border border-green-200' 
+                  : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+              }`}>
+                {site.status === 'published' ? (
+                  <>
+                    <FiCheckCircle className="w-3 h-3" />
+                    Published
+                  </>
+                ) : (
+                  <>
+                    <FiClock className="w-3 h-3" />
+                    Draft
+                  </>
+                )}
+              </span>
+              
+              {/* Enhanced Payment Status */}
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${paymentStatus.color}`}>
+                <StatusIcon className="w-3 h-3" />
+                {paymentStatus.text}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Analytics Preview */}
+        <div className="hidden lg:flex flex-col items-end gap-1">
+          <div className="text-sm font-semibold text-gray-900">{site.analytics.visitors}</div>
+          <div className="text-xs text-gray-500">visitors</div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-1">
+          <button 
+            onClick={() => onEdit(site)}
+            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors duration-200 hover:scale-110"
+            title="Edit Website"
+          >
+            <FiEdit2 className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onView(site)}
+            className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors duration-200 hover:scale-110"
+            title="View Website"
+          >
+            <FiExternalLink className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onDelete(site)}
+            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 hover:scale-110"
+            title="Delete Website"
+          >
+            <FiTrash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced Loading Component with skeleton loading
+const LoadingSpinner = () => (
+  <div className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+    <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl text-center max-w-sm w-full border border-gray-200">
+      <div className="relative mb-8">
+        <div className="w-20 h-20 border-4 border-blue-200 rounded-full animate-spin mx-auto"></div>
+        <div className="w-20 h-20 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-1/2 transform -translate-x-1/2"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <FiGlobe className="w-8 h-8 text-blue-600 animate-pulse" />
+        </div>
+      </div>
+      <h2 className="text-xl font-bold text-gray-900 mb-3">Loading Dashboard</h2>
+      <p className="text-gray-600 leading-relaxed">Preparing your website management experience...</p>
+      
+      {/* Skeleton elements */}
+      <div className="mt-6 space-y-3">
+        <div className="h-2 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-2 bg-gray-200 rounded animate-pulse w-3/4 mx-auto"></div>
+        <div className="h-2 bg-gray-200 rounded animate-pulse w-1/2 mx-auto"></div>
+      </div>
+    </div>
+  </div>
+);
+
+// Enhanced Empty State Component
+const EmptyWebsiteState = ({ onCreateWebsite }: { onCreateWebsite: () => void }) => (
+  <div className="text-center py-16">
+    {/* Illustration */}
+    <div className="relative mb-8">
+      <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center mx-auto shadow-xl">
+        <FiGlobe className="w-16 h-16 text-blue-600" />
+      </div>
+      {/* Floating elements */}
+      <div className="absolute top-0 right-1/4 w-6 h-6 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.5s' }}></div>
+      <div className="absolute bottom-4 left-1/4 w-4 h-4 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
+      <div className="absolute top-8 left-1/3 w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '1.5s' }}></div>
+    </div>
+    
+    <div className="max-w-md mx-auto">
+      <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to launch your digital presence?</h3>
+      <p className="text-gray-600 mb-8 leading-relaxed">
+        Transform your ideas into stunning, professional websites. Our intuitive builder helps you create 
+        beautiful sites that engage visitors and grow your business.
+      </p>
+      
+      <div className="space-y-4">
+        <button
+          onClick={onCreateWebsite}
+          className="group flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-xl mx-auto"
+        >
+          <FiPlus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" />
+          Create Your First Website
+          <FiZap className="w-5 h-5 ml-2 animate-pulse" />
+        </button>
+        
+        <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
+          <div className="flex items-center gap-2">
+            <FiCheckCircle className="w-4 h-4 text-green-500" />
+            No coding required
+          </div>
+          <div className="flex items-center gap-2">
+            <FiCheckCircle className="w-4 h-4 text-green-500" />
+            Professional templates
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -68,20 +350,18 @@ export default function Dashboard() {
   const [modalStep, setModalStep] = useState(0);
   const [editWebsite, setEditWebsite] = useState<null | any>(null);
   const [viewWebsite, setViewWebsite] = useState<null | any>(null);
-  const [deleteWebsite, setDeleteWebsite] = useState<null | any>(null);
+  const [deleteWebsiteData, setDeleteWebsiteData] = useState<null | any>(null);
   const [websiteList, setWebsiteList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [apiWebsites, setApiWebsites] = useState<Website[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const location = useLocation();
   const navigate = useNavigate();
   const previousLocation = useRef<string>('');
 
-  const completedSteps = setupSteps.filter(step => step.done).length;
-  const progressPercentage = (completedSteps / setupSteps.length) * 100;
-
-  // Calculate totals from mock analytics (since keeping mock data)
+  // Calculate enhanced totals from analytics
   const totalVisitors = websiteList.reduce((sum, site) => sum + site.analytics.visitors, 0);
   const totalPageViews = websiteList.reduce((sum, site) => sum + site.analytics.pageViews, 0);
   const totalRevenue = websiteList.reduce((sum, site) => sum + site.analytics.revenue, 0);
@@ -89,19 +369,50 @@ export default function Dashboard() {
     ? websiteList.reduce((sum, site) => sum + site.analytics.conversionRate, 0) / websiteList.length 
     : 0;
 
+  // Enhanced refresh function with loading state
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      clearWebsitesCache();
+      const websites = await fetchMyWebsites(true);
+      setApiWebsites(websites);
+      const convertedWebsites = websites.map(convertApiWebsiteToComponent);
+      setWebsiteList(convertedWebsites);
+      setError(null);
+    } catch (err) {
+      console.error('Refresh failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Handle browser refresh - detect when page is refreshed
+  useEffect(() => {
+    const handleBeforeUnload = () => clearWebsitesCache();
+    const handleVisibilityChange = () => {
+      if (!document.hidden) silentRefreshWebsites();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // Silent refresh function (no loading indicator)
   const silentRefreshWebsites = async () => {
     try {
       const websites = await refreshWebsiteData();
-      
-      // Update state with fresh data
       setApiWebsites(websites);
       const convertedWebsites = websites.map(convertApiWebsiteToComponent);
       setWebsiteList(convertedWebsites);
       setError(null);
     } catch (err) {
       console.error('Silent refresh failed, keeping stale data:', err);
-      // Don't update error state - keep stale data visible as requested
     }
   };
 
@@ -115,7 +426,6 @@ export default function Dashboard() {
     try {
       let websites: Website[];
       
-      // Only use cache for initial non-silent loads
       if (useCache && !silent) {
         const cachedWebsites = getCachedWebsites();
         if (cachedWebsites && cachedWebsites.length > 0) {
@@ -127,28 +437,21 @@ export default function Dashboard() {
         }
       }
 
-      // Fetch from API (always fresh data)
-      websites = await fetchMyWebsites(true); // Always force refresh
-      
-      // Update state
+      websites = await fetchMyWebsites(true);
       setApiWebsites(websites);
       const convertedWebsites = websites.map(convertApiWebsiteToComponent);
       setWebsiteList(convertedWebsites);
       
-      if (!silent) {
-        setError(null);
-      }
+      if (!silent) setError(null);
       
     } catch (err) {
       console.error('Failed to load websites:', err);
       if (!silent) {
         setError(err instanceof Error ? err.message : 'Failed to load websites');
-        setWebsiteList([]); // Show empty state on error only for non-silent calls
+        setWebsiteList([]);
       }
     } finally {
-      if (!silent) {
-        setLoading(false);
-      }
+      if (!silent) setLoading(false);
     }
   };
 
@@ -162,15 +465,34 @@ export default function Dashboard() {
     const currentPath = location.pathname;
     const prevPath = previousLocation.current;
     
-    // Check if we're on the dashboard and coming from a different route
     if (currentPath === '/dashboard' && prevPath && prevPath !== '/dashboard') {
-      // Perform silent refresh without loading indicator
       silentRefreshWebsites();
     }
     
-    // Update previous location for next navigation (do this AFTER the check)
     previousLocation.current = currentPath;
   }, [location.pathname]);
+
+  // Sort websiteList by tempIndex for display
+  useEffect(() => {
+    if (apiWebsites && apiWebsites.length > 0) {
+      const cachedWebsites = getCachedWebsites() || [];
+      console.log('Cached websites data:', cachedWebsites.map(w => ({ 
+        domain: (w as any).domain, 
+        paid_till: (w as any).paid_till 
+      })));
+      
+      const sorted = [...cachedWebsites].sort((a, b) => ((a as any).tempIndex || 0) - ((b as any).tempIndex || 0));
+      const convertedWebsites = sorted.map(convertApiWebsiteToComponent);
+      
+      console.log('Final converted websites:', convertedWebsites.map(w => ({ 
+        name: w.name, 
+        paid_till: w.paid_till,
+        paidTill: w.paidTill 
+      })));
+      
+      setWebsiteList(convertedWebsites);
+    }
+  }, [apiWebsites]);
 
   const handleCreateWebsite = () => {
     setModalStep(0);
@@ -178,49 +500,53 @@ export default function Dashboard() {
     setShowCreateModal(true);
   };
 
-  // Enhanced edit step change handler for API refresh
   const handleStepChange = async (step: number) => {
     await silentRefreshWebsites();
   };
 
-  // Enhanced create website completion handler
   const handleCreateWebsiteComplete = async () => {
     setShowCreateModal(false);
-    
-    // Refresh data after successful creation
     await silentRefreshWebsites();
   };
 
+  // Edit handler: use tempIndex to find the correct website
   const handleEditWebsite = (website: any) => {
-    // Find the corresponding API data for pre-population
-    const apiWebsite = apiWebsites.find(api => api.domain === website.domain);
-    if (apiWebsite) {
-      // Convert API data to form format for editing
+    const cachedWebsites = getCachedWebsites() || [];
+    let tempIndex = (website as any)?.tempIndex;
+    
+    if (!tempIndex && (website as any)?.domain) {
+      const found = cachedWebsites.find((w: any) => w.domain === (website as any).domain);
+      tempIndex = (found as any)?.tempIndex;
+    }
+    
+    const selectedWebsite = cachedWebsites.find((w: any) => (w as any).tempIndex === tempIndex);
+    if (selectedWebsite) {
       const editData = {
-        organizationName: apiWebsite.organization_name,
-        organizationType: apiWebsite.organization_type,
-        tagline: apiWebsite.tagline,
-        contactEmail: apiWebsite.contact_email,
-        contactPhone: apiWebsite.contact_phone,
-        address: apiWebsite.address,
-        primaryColor: apiWebsite.primary_color,
-        secondaryColor: apiWebsite.secondary_color,
-        font: apiWebsite.font,
-        introText: apiWebsite.intro_text,
-        about: apiWebsite.about,
-        mission: apiWebsite.mission,
-        history: apiWebsite.history,
-        team: apiWebsite.team_members || [{ name: '', role: '', photo: null }],
-        services: apiWebsite.services_offerings || [{ name: '', description: '', image: null, price: '' }],
-        social: apiWebsite.social_media_links || { facebook: '', instagram: '', twitter: '', youtube: '', website: '' },
-        domain: apiWebsite.domain,
-        video: apiWebsite.video_youtube_link,
-        // Note: File fields (logo, images) cannot be pre-populated from API
+        id: (selectedWebsite as any).Website_id,
+        organizationName: (selectedWebsite as any).organization_name,
+        organizationType: (selectedWebsite as any).organization_type,
+        tagline: (selectedWebsite as any).tagline,
+        contactEmail: (selectedWebsite as any).contact_email,
+        contactPhone: (selectedWebsite as any).contact_phone,
+        address: (selectedWebsite as any).address,
+        primaryColor: (selectedWebsite as any).primary_color,
+        secondaryColor: (selectedWebsite as any).secondary_color,
+        font: (selectedWebsite as any).font,
+        introText: (selectedWebsite as any).intro_text,
+        about: (selectedWebsite as any).about,
+        mission: (selectedWebsite as any).mission,
+        history: (selectedWebsite as any).history,
+        team: (selectedWebsite as any).team_members || [{ name: '', role: '', photo: null }],
+        services: (selectedWebsite as any).services_offerings || [{ name: '', description: '', image: null, price: '' }],
+        social: (selectedWebsite as any).social_media_links || { facebook: '', instagram: '', twitter: '', youtube: '', website: '' },
+        domain: (selectedWebsite as any).domain,
+        video: (selectedWebsite as any).video_youtube_link,
         logo: null,
         favicon: null,
         heroImage: null,
         bannerImages: [],
         gallery: [],
+        tempIndex: (selectedWebsite as any).tempIndex,
       };
       setEditWebsite(editData);
     }
@@ -228,22 +554,17 @@ export default function Dashboard() {
     setShowCreateModal(true);
   };
 
-  // Enhanced edit website completion handler
   const handleEditWebsiteComplete = async () => {
     setEditWebsite(null);
     setShowCreateModal(false);
-    
-    // Refresh data after successful edit
     await silentRefreshWebsites();
   };
 
   const handleViewWebsite = (website: any) => {
-    // Use API data for detailed view
     const apiWebsite = apiWebsites.find(api => api.domain === website.domain);
     if (apiWebsite) {
       const viewData = {
         ...website,
-        // Add additional API data for detailed view
         organizationName: apiWebsite.organization_name,
         organizationType: apiWebsite.organization_type,
         tagline: apiWebsite.tagline,
@@ -263,56 +584,111 @@ export default function Dashboard() {
   };
 
   const handleDeleteWebsite = (website: any) => {
-    setDeleteWebsite(website);
+    setDeleteWebsiteData(website);
   };
 
-  const confirmDeleteWebsite = (website: any) => {
-    setWebsiteList(prev => prev.filter(w => w.id !== website.id));
-    setDeleteWebsite(null);
-    // TODO: Implement actual API delete call
+  const confirmDeleteWebsite = async (website: any) => {
+    try {
+      const cachedWebsites = getCachedWebsites() || [];
+      const selectedWebsite = cachedWebsites.find((w: any) => {
+        return (w as any).tempIndex === (website as any).tempIndex;
+      });
+      
+      if (!selectedWebsite) {
+        alert('Website not found in cache');
+        setDeleteWebsiteData(null);
+        return;
+      }
+
+      const websiteId = (selectedWebsite as any).Website_id || (selectedWebsite as any).id;
+      
+      if (!websiteId) {
+        alert('Website ID not found. Please refresh and try again.');
+        setDeleteWebsiteData(null);
+        return;
+      }
+
+      const response = await deleteWebsite(websiteId);
+      
+      if (response.success) {
+        // Remove from local state immediately
+        setWebsiteList(prev => prev.filter(w => (w as any).tempIndex !== (website as any).tempIndex));
+        // Refresh data from server
+        await silentRefreshWebsites();
+      } else {
+        alert('Failed to delete website');
+      }
+    } catch (error) {
+      console.error('Failed to delete website:', error);
+      alert(`Failed to delete website: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeleteWebsiteData(null);
+    }
   };
 
-  const handleRefresh = () => {
-    clearWebsitesCache();
-    loadWebsites(false); // Force refresh without cache
-  };
-
-  // Loading state
+  // Enhanced Loading state
   if (loading) {
-    return (
-      <div className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-8 shadow-xl text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Loading Your Websites</h2>
-          <p className="text-gray-600">Please wait while we fetch your data...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
-  // Error state
+  // Enhanced Error state
   if (error) {
+    const isUnauthorized = error && error.toLowerCase().includes('401');
+    const handleRetry = () => {
+      if (isUnauthorized) {
+        navigate('/login');
+      } else {
+        handleRefresh();
+      }
+    };
+    
     return (
-      <div className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-8 shadow-xl text-center max-w-md">
-          <FiAlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Failed to Load Websites</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <div className="flex gap-4 justify-center">
+      <div className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl text-center max-w-lg w-full border border-red-100">
+          {/* Enhanced error illustration */}
+          <div className="relative mb-6">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
+              <FiAlertTriangle className="w-10 h-10 text-red-600" />
+            </div>
+            {/* Floating warning indicators */}
+            <div className="absolute top-0 right-1/4 w-3 h-3 bg-red-400 rounded-full animate-ping"></div>
+            <div className="absolute bottom-2 left-1/4 w-2 h-2 bg-orange-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+          </div>
+          
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            {isUnauthorized ? 'Session Expired' : 'Something went wrong'}
+          </h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            {isUnauthorized 
+              ? 'Your session has expired. Please log in again to continue managing your websites.'
+              : `We encountered an issue while loading your dashboard. ${error}`
+            }
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+              onClick={handleRetry}
+              className="flex items-center justify-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 hover:scale-105 shadow-lg"
             >
               <FiRefreshCw className="w-4 h-4" />
-              Retry
+              {isUnauthorized ? 'Go to Login' : 'Try Again'}
             </button>
-            <button
-              onClick={handleCreateWebsite}
-              className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors"
-            >
-              <FiPlus className="w-4 h-4" />
-              Create Website
-            </button>
+            {!isUnauthorized && (
+              <button
+                onClick={handleCreateWebsite}
+                className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg"
+              >
+                <FiPlus className="w-4 h-4" />
+                Create Website
+              </button>
+            )}
+          </div>
+          
+          {/* Help text */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              Need help? Contact our support team for assistance.
+            </p>
           </div>
         </div>
       </div>
@@ -321,49 +697,53 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-indigo-700 rounded-3xl mx-8 mt-8 mb-8">
-        {/* Background Pattern */}
+      {/* Enhanced Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl md:rounded-3xl mx-4 md:mx-8 mt-4 md:mt-8 mb-6 md:mb-8 shadow-2xl">
+        {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full">
-            <div className="absolute top-10 right-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
-            <div className="absolute bottom-10 left-10 w-24 h-24 bg-white rounded-full animate-bounce"></div>
-            <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-          </div>
+          <div className="absolute top-10 right-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
+          <div className="absolute bottom-10 left-10 w-24 h-24 bg-white rounded-full animate-bounce"></div>
+          <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
 
-        <div className="relative px-8 py-12">
+        <div className="relative px-6 md:px-8 py-8 md:py-12">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-white mb-8 lg:mb-0">
-              <h1 className="text-4xl lg:text-5xl font-bold mb-4 leading-tight">
-                Welcome back, <span className="text-yellow-300">{username || 'Builder'}!</span>
+            <div className="text-white mb-8 lg:mb-0 max-w-2xl">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                Welcome back, <span className="text-yellow-300 bg-yellow-300/10 px-2 py-1 rounded-lg">{username || 'Builder'}!</span>
               </h1>
-              <p className="text-xl text-blue-100 mb-6 leading-relaxed">
-                Let's create something amazing together. Build professional websites that convert visitors into customers.
+              <p className="text-lg lg:text-xl text-blue-100 mb-6 leading-relaxed">
+                Transform your ideas into stunning websites. Create, manage, and grow your digital presence with our professional tools.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="flex items-center justify-center gap-3 bg-white text-primary-700 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-yellow-50 transition-all duration-200 transform hover:scale-105 hover:shadow-2xl"
+                  className="group flex items-center justify-center gap-3 bg-white text-blue-700 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-yellow-50 transition-all duration-200 transform hover:scale-105 hover:shadow-2xl"
                 >
-                  <FiPlus className="w-6 h-6" />
+                  <FiPlus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-200" />
                   Create New Website
                 </button>
-                <button className="flex items-center justify-center gap-3 bg-primary-500/20 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold text-lg border border-white/20 hover:bg-primary-400/30 transition-all duration-200">
+                <button className="flex items-center justify-center gap-3 bg-blue-500/20 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold text-lg border border-white/20 hover:bg-blue-400/30 transition-all duration-200">
                   <FiTrendingUp className="w-6 h-6" />
-                  View Analytics
+                  Analytics Dashboard
                 </button>
               </div>
             </div>
             
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                <div className="text-3xl font-bold text-white mb-1">{websiteList.length}</div>
+            {/* Enhanced Quick Stats */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-1 lg:gap-6 w-full lg:w-auto">
+              <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <FiGlobe className="w-6 h-6 text-white" />
+                  <div className="text-3xl font-bold text-white">{websiteList.length}</div>
+                </div>
                 <div className="text-blue-100 text-sm font-medium">Active Websites</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                <div className="text-3xl font-bold text-white mb-1">{totalVisitors.toLocaleString()}</div>
+              <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <FiUsers className="w-6 h-6 text-white" />
+                  <div className="text-3xl font-bold text-white">{totalVisitors.toLocaleString()}</div>
+                </div>
                 <div className="text-blue-100 text-sm font-medium">Total Visitors</div>
               </div>
             </div>
@@ -371,264 +751,135 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Analytics Overview */}
-      <div className="px-8 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Visitors</p>
-                <p className="text-2xl font-bold text-gray-900">{totalVisitors.toLocaleString()}</p>
-              </div>
-              <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                <FiUsers className="h-6 w-6 text-blue-600" />
-              </div>
+      {/* Enhanced Analytics Overview */}
+      <div className="px-4 md:px-8 mb-6 md:mb-8">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Performance Overview</h2>
+              <p className="text-lg text-gray-600">Track your websites' performance and growth metrics</p>
+            </div>
+            <div className="hidden md:flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-700">Live Data</span>
             </div>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Page Views</p>
-                <p className="text-2xl font-bold text-gray-900">{totalPageViews.toLocaleString()}</p>
-              </div>
-              <div className="h-12 w-12 bg-green-50 rounded-lg flex items-center justify-center">
-                <FiGlobe className="h-6 w-6 text-green-600" />
-              </div>
+          
+          {/* Quick insights */}
+          <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-2">
+            <div className="flex items-center gap-1">
+              <FiTrendingUp className="w-4 h-4 text-green-500" />
+              <span>Overall growth trending upward</span>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">${totalRevenue.toLocaleString()}</p>
-              </div>
-              <div className="h-12 w-12 bg-emerald-50 rounded-lg flex items-center justify-center">
-                <FiDollarSign className="h-6 w-6 text-emerald-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg. Conversion</p>
-                <p className="text-2xl font-bold text-gray-900">{avgConversionRate.toFixed(1)}%</p>
-              </div>
-              <div className="h-12 w-12 bg-purple-50 rounded-lg flex items-center justify-center">
-                <FiTrendingUp className="h-6 w-6 text-purple-600" />
-              </div>
+            <div className="flex items-center gap-1">
+              <FiTarget className="w-4 h-4 text-blue-500" />
+              <span>{websiteList.filter(w => w.status === 'published').length} active websites</span>
             </div>
           </div>
         </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+          <AnalyticsCard
+            title="Total Visitors"
+            value={mockAnalytics.visitors}
+            trend={mockAnalytics.visitors.trend}
+            isUp={mockAnalytics.visitors.isUp}
+            icon={FiUsers}
+            color="from-blue-500 to-blue-600"
+          />
+          <AnalyticsCard
+            title="Page Views"
+            value={mockAnalytics.pageViews}
+            trend={mockAnalytics.pageViews.trend}
+            isUp={mockAnalytics.pageViews.isUp}
+            icon={FiGlobe}
+            color="from-green-500 to-green-600"
+          />
+          <AnalyticsCard
+            title="Revenue"
+            value={mockAnalytics.revenue}
+            trend={mockAnalytics.revenue.trend}
+            isUp={mockAnalytics.revenue.isUp}
+            icon={FiDollarSign}
+            color="from-emerald-500 to-emerald-600"
+            prefix="$"
+          />
+          <AnalyticsCard
+            title="Conversion Rate"
+            value={mockAnalytics.conversionRate}
+            trend={mockAnalytics.conversionRate.trend}
+            isUp={mockAnalytics.conversionRate.isUp}
+            icon={FiTrendingUp}
+            color="from-purple-500 to-purple-600"
+          />
+        </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="px-8 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Websites List */}
-          <div className="lg:col-span-2">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-xl overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+      {/* Enhanced Main Content Grid */}
+      <div className="px-4 md:px-8 pb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+          {/* Enhanced Websites List */}
+          <div className="xl:col-span-2">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Your Websites</h2>
-                  <p className="text-gray-600 mt-1">Manage and monitor your website portfolio</p>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Websites</h2>
+                  <p className="text-lg text-gray-600">Manage and monitor your website portfolio</p>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                    <span>{websiteList.length} total websites</span>
+                    <span>•</span>
+                    <span>{websiteList.filter(w => w.status === 'published').length} published</span>
+                    <span>•</span>
+                    <span>{websiteList.filter(w => w.status === 'draft').length} drafts</span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-3 mt-4 md:mt-0">
                   <button
                     onClick={() => silentRefreshWebsites()}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:scale-105 shadow-sm"
                     title="Refresh website data"
                   >
-                    <FiRefreshCw className="h-4 w-4 mr-2" />
+                    <FiRefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Refresh
                   </button>
                   <button
                     onClick={handleCreateWebsite}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm font-semibold hover:scale-105 shadow-lg"
                   >
-                    <FiPlus className="h-4 w-4 mr-2" />
+                    <FiPlus className="h-4 w-4" />
                     Create Website
                   </button>
                 </div>
               </div>
               
-              <div className="p-6 space-y-4">
+              <div className="p-6">
                 {websiteList.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <FiGlobe className="w-12 h-12 text-primary-600" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">No Websites Yet</h3>
-                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                      Get started by creating your first website. Our intuitive builder makes it easy to create professional websites in minutes.
-                    </p>
-                    <button
-                      onClick={handleCreateWebsite}
-                      className="flex items-center gap-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white px-8 py-4 rounded-xl font-semibold hover:from-primary-700 hover:to-primary-800 transition-all duration-200 transform hover:scale-105 shadow-lg mx-auto"
-                    >
-                      <FiPlus className="w-5 h-5" />
-                      Create Your First Website
-                    </button>
-                  </div>
+                  <EmptyWebsiteState onCreateWebsite={handleCreateWebsite} />
                 ) : (
-                  websiteList.map(site => (
-                    <div key={site.id} className="group bg-gradient-to-r from-white to-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 hover:border-primary-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-                              <span className="text-white font-bold text-lg">{site.name[0].toUpperCase()}</span>
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-bold text-gray-900">{site.name}</h3>
-                              <p className="text-gray-600 text-sm">{site.organizationName}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-4 mb-4">
-                            {site.status === 'Published' ? (
-                              <span className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                                <FiCheckCircle className="w-4 h-4" />
-                                Published
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
-                                <FiClock className="w-4 h-4" />
-                                Draft
-                              </span>
-                            )}
-                            
-                            {site.paidTill ? (
-                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                                Paid till {site.paidTill}
-                              </span>
-                            ) : (
-                              <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-                                Payment Pending
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Analytics Preview */}
-                          <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-gray-900">{site.analytics.visitors.toLocaleString()}</div>
-                              <div className="text-xs text-gray-600">Visitors</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-gray-900">{site.analytics.pageViews.toLocaleString()}</div>
-                              <div className="text-xs text-gray-600">Page Views</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-gray-900">${site.analytics.revenue.toLocaleString()}</div>
-                              <div className="text-xs text-gray-600">Revenue</div>
-                            </div>
-                          </div>
-
-                          <div className="text-sm text-gray-500">
-                            Last updated: {site.lastUpdated}
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <button 
-                            onClick={() => handleEditWebsite(site)}
-                            className="p-3 bg-primary-50 hover:bg-primary-100 text-primary-600 rounded-xl transition-colors duration-200"
-                            title="Edit"
-                          >
-                            <FiEdit2 className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleViewWebsite(site)}
-                            className="p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors duration-200"
-                            title="View"
-                          >
-                            <FiExternalLink className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteWebsite(site)}
-                            className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors duration-200"
-                            title="Delete"
-                          >
-                            <FiTrash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                  <div className="space-y-4">
+                    {websiteList.map((site: WebsiteWithTempIndex) => (
+                      <WebsiteCard
+                        key={(site as any).id}
+                        site={site}
+                        onEdit={handleEditWebsite}
+                        onView={handleViewWebsite}
+                        onDelete={handleDeleteWebsite}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Setup Progress & Quick Actions */}
+          {/* Enhanced Setup Progress & Quick Actions */}
           <div className="space-y-6">
-            {/* Setup Progress */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Setup Progress</h3>
-                <div className="text-2xl font-bold text-primary-600">{Math.round(progressPercentage)}%</div>
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-3 mb-6 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-primary-500 to-primary-600 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
-              </div>
-
-              <div className="space-y-3">
-                {setupSteps.map((step, index) => (
-                  <div key={index} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${step.done ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
-                    <div className={`p-2 rounded-lg ${step.done ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
-                      {step.done ? <FiCheckCircle className="w-4 h-4" /> : step.icon}
-                    </div>
-                    <span className={`font-medium ${step.done ? 'text-green-700' : 'text-gray-600'}`}>
-                      {step.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-xl p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h3>
-              <div className="space-y-4">
-                <button className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl transition-all duration-200 group">
-                  <div className="p-2 bg-blue-500 text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <FiTrendingUp className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-semibold text-gray-900">View Analytics</div>
-                    <div className="text-sm text-gray-600">Track performance</div>
-                  </div>
-                </button>
-                
-                <button className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-xl transition-all duration-200 group">
-                  <div className="p-2 bg-purple-500 text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <FiZap className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-semibold text-gray-900">SEO Optimization</div>
-                    <div className="text-sm text-gray-600">Boost visibility</div>
-                  </div>
-                </button>
-                
-                <button className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl transition-all duration-200 group">
-                  <div className="p-2 bg-green-500 text-white rounded-lg group-hover:scale-110 transition-transform">
-                    <FiAward className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-semibold text-gray-900">Templates Gallery</div>
-                    <div className="text-sm text-gray-600">Browse designs</div>
-                  </div>
-                </button>
-              </div>
-            </div>
+            <SetupProgress websites={apiWebsites} />
+            <QuickActions 
+              onCreateWebsite={handleCreateWebsite}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
+            />
           </div>
         </div>
       </div>
@@ -660,15 +911,12 @@ export default function Dashboard() {
         />
       )}
 
-      {deleteWebsite && (
+      {deleteWebsiteData && (
         <DeleteWebsiteModal
-          open={!!deleteWebsite}
-          onClose={() => setDeleteWebsite(null)}
-          website={deleteWebsite}
-          onDelete={(website) => {
-            setWebsiteList(prev => prev.filter(w => w.id !== website.id));
-            setDeleteWebsite(null);
-          }}
+          open={!!deleteWebsiteData}
+          onClose={() => setDeleteWebsiteData(null)}
+          website={deleteWebsiteData}
+          onDelete={confirmDeleteWebsite}
         />
       )}
     </div>
