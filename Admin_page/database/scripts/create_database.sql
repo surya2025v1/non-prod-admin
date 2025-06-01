@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS websites (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    status ENUM('draft', 'published', 'archived') DEFAULT 'draft',
+    status ENUM('draft', 'processing...','published', 'archived') DEFAULT 'draft',
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     organization_name VARCHAR(100),
