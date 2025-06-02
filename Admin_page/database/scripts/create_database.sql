@@ -114,7 +114,11 @@ CREATE TABLE IF NOT EXISTS websites (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
+<<<<<<< HEAD
     status ENUM('draft', 'processing', 'pending', 'published', 'archived') DEFAULT 'draft',
+=======
+    status ENUM('draft', 'processing...','published', 'archived') DEFAULT 'draft',
+>>>>>>> c824f5e1cc11936cb1ac8a8caafc717aa8972408
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     organization_name VARCHAR(100),
@@ -145,6 +149,7 @@ CREATE TABLE IF NOT EXISTS websites (
     page_no INT,
     CONSTRAINT fk_owner FOREIGN KEY (owner_id) REFERENCES users(id)
 );
+<<<<<<< HEAD
 
 CREATE TABLE roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -153,3 +158,5 @@ CREATE TABLE roles (
     is_default BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE
 );
+=======
+>>>>>>> c824f5e1cc11936cb1ac8a8caafc717aa8972408
