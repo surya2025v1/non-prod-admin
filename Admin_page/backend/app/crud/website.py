@@ -83,17 +83,19 @@ def update_website_by_id(db: Session, website_id: int, user_id: int, data: dict)
     return website
 
 def get_websites_for_user(db: Session, user_id: int):
-    return db.query(Website).filter(Website.owner_id == user_id).all()
+    return db.query(Website).filter(and_(Website.owner_id == user_id, Website.is_active == True)).all()
 
 def delete_website_by_id(db: Session, website_id: int, user_id: int):
-    """Delete a website by ID, ensuring the user owns it"""
+    """Logically delete a website by ID by setting is_active to False, ensuring the user owns it"""
     # Find the website and verify ownership
     website = db.query(Website).filter(and_(Website.id == website_id, Website.owner_id == user_id)).first()
     
     if not website:
         return None
     
-    # Delete the website
-    db.delete(website)
+    # Logically delete the website by setting is_active to False
+    website.is_active = False
+    website.last_updated = datetime.utcnow()
     db.commit()
+    db.refresh(website)
     return True 

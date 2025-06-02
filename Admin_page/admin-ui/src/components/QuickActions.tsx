@@ -75,7 +75,7 @@ export default function QuickActions({
       <button 
         onClick={onRefresh}
         disabled={isRefreshing}
-        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-all duration-200 disabled:opacity-50 border border-gray-200 w-fit mb-1"
+        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 rounded-lg transition-all duration-200 disabled:opacity-50 border border-gray-200 w-fit mb-1 shadow-sm"
       >
         <FiTrendingUp className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
         {isRefreshing ? 'Refreshing...' : 'Refresh'}

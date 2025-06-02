@@ -83,7 +83,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const avatarLetter = firstName ? firstName[0].toUpperCase() : username ? username[0].toUpperCase() : 'U';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
       <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg relative animate-fadeIn border border-gray-200/50 overflow-hidden">
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-indigo-700 px-8 py-6">

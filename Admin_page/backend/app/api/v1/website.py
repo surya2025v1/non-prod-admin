@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.deps import get_current_user
@@ -6,10 +6,12 @@ from app.models.website import WebsiteCreate, WebsiteOut
 from app.crud.website import upsert_website_for_user, get_websites_for_user, create_website_with_defaults, update_website_by_id, delete_website_by_id
 from app.models.user import User
 from app.crud.user import get_user_by_username
-from app.core.security import TokenData
+from app.core.security import TokenData, get_password_hash
 from pydantic import BaseModel
 from typing import Optional
 import logging
+from sqlalchemy import text
+from app.db.client_db_manager import client_db_manager
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -176,4 +178,161 @@ async def delete_mysite(
         return {"success": True, "message": "Website deleted successfully"}
     except Exception as e:
         logger.error(f"Error deleting website: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error") 
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get('/get_roles')
+async def get_roles(
+    current_user: TokenData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all active role names from the roles table (requires authentication).
+    """
+    # Use raw SQL to query roles table for active roles
+    result = db.execute(text("SELECT name FROM roles WHERE is_active=1")).fetchall()
+    role_names = [row[0] for row in result]
+    return {
+        "status": "success",
+        "message": "Active roles fetched successfully",
+        "data": role_names
+    }
+
+@router.post('/add_user')
+async def add_user(
+    domain: str = Body(...),
+    first_name: str = Body(...),
+    last_name: str = Body(...),
+    email: str = Body(...),
+    username: str = Body(...),
+    role: str = Body(...),
+    password: str = Body(...),
+    is_active: bool = Body(...),
+    current_user: TokenData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Add a user to the client users table for the given domain and owner.
+    """
+    # Get owner_id from admin_page_db.users
+    owner = db.query(User).filter(User.username == current_user.username).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="User not found")
+    owner_id = owner.id
+    # Get client DB session
+    session = client_db_manager.get_client_session(domain, owner_id)
+    if not session:
+        raise HTTPException(status_code=500, detail="Client database not found")
+    try:
+        hashed_pw = get_password_hash(password)
+        sql = text("""
+            INSERT INTO users (first_name, last_name, email, username, role, password_hash, is_active, created_at, updated_at, salt)
+            VALUES (:first_name, :last_name, :email, :username, :role, :password_hash, :is_active, NOW(), NOW(),'dummy')
+        """)
+        session.execute(sql, {
+            'first_name': first_name,
+            'last_name': last_name,
+            'email': email,
+            'username': username,
+            'role': role,
+            'password_hash': hashed_pw,
+            'is_active': is_active
+        })
+        session.commit()
+        return {"status": "success", "message": "User added successfully"}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add user: {e}")
+    finally:
+        session.close()
+
+@router.post('/modify_user')
+async def modify_user(
+    user_id: int = Body(...),
+    domain: str = Body(...),
+    first_name: str = Body(...),
+    last_name: str = Body(...),
+    email: str = Body(...),
+    username: str = Body(...),
+    role: str = Body(...),
+    password: str = Body(None),
+    is_active: bool = Body(...),
+    current_user: TokenData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Modify a user in the client users table for the given domain and owner.
+    """
+    owner = db.query(User).filter(User.username == current_user.username).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="User not found")
+    owner_id = owner.id
+    session = client_db_manager.get_client_session(domain, owner_id)
+    if not session:
+        raise HTTPException(status_code=500, detail="Client database not found")
+    try:
+        update_fields = [
+            'first_name = :first_name',
+            'last_name = :last_name',
+            'email = :email',
+            'username = :username',
+            'role = :role',
+            'is_active = :is_active',
+            'updated_at = NOW()'
+        ]
+        params = {
+            'first_name': first_name,
+            'last_name': last_name,
+            'email': email,
+            'username': username,
+            'role': role,
+            'is_active': is_active,
+            'user_id': user_id
+        }
+        if password:
+            update_fields.append('password_hash = :password_hash')
+            params['password_hash'] = get_password_hash(password)
+        sql = text(f"""
+            UPDATE users SET {', '.join(update_fields)} WHERE id = :user_id
+        """)
+        result = session.execute(sql, params)
+        session.commit()
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found in client DB")
+        return {"status": "success", "message": "User updated successfully"}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {e}")
+    finally:
+        session.close()
+
+@router.post('/delete_user')
+async def delete_user(
+    user_id: int = Body(...),
+    domain: str = Body(...),
+    current_user: TokenData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently delete a user from the client users table for the given domain and owner.
+    """
+    owner = db.query(User).filter(User.username == current_user.username).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="User not found")
+    owner_id = owner.id
+    session = client_db_manager.get_client_session(domain, owner_id)
+    if not session:
+        raise HTTPException(status_code=500, detail="Client database not found")
+    try:
+        sql = text("""
+            DELETE FROM users WHERE id=:user_id
+        """)
+        result = session.execute(sql, {'user_id': user_id})
+        session.commit()
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found in client DB")
+        return {"status": "success", "message": "User deleted successfully"}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete user: {e}")
+    finally:
+        session.close() 

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   FiPlus, FiEdit2, FiExternalLink, FiTrash2, FiCheckCircle, FiAlertCircle, 
   FiTrendingUp, FiUsers, FiGlobe, FiDollarSign, FiStar, FiClock, 
-  FiZap, FiAward, FiTarget, FiAlertTriangle, FiRefreshCw, FiArrowUp 
+  FiZap, FiAward, FiTarget, FiAlertTriangle, FiRefreshCw, FiArrowUp, FiEye, FiCalendar, FiDownload
 } from 'react-icons/fi';
 import CreateWebsiteModal from './website/CreateWebsiteModal';
 import UpgradeModal from './website/UpgradeModal';
@@ -11,11 +11,20 @@ import WebsiteDetailsModal from './website/WebsiteDetailsModal';
 import DeleteWebsiteModal from './website/DeleteWebsiteModal';
 import SetupProgress from './SetupProgress';
 import QuickActions from './QuickActions';
-import { getAuthState } from '../utils/auth';
+import { getAuthState, clearAuthData, logout } from '../utils/auth';
 import { fetchMyWebsites, cacheWebsites, getCachedWebsites, clearWebsitesCache, refreshWebsiteData, deleteWebsite, type Website } from '../utils/api';
 
-// Get username from auth state
-const { username } = getAuthState();
+// Get username from auth state with proper initialization
+const useAuthUser = () => {
+  const [username, setUsername] = useState<string>('');
+  
+  useEffect(() => {
+    const { username: authUsername } = getAuthState();
+    setUsername(authUsername || '');
+  }, []);
+  
+  return username;
+};
 
 // Enhanced analytics data with trend indicators
 const mockAnalytics = {
@@ -32,55 +41,30 @@ interface WebsiteWithTempIndex extends Website {
 
 // Convert API website data to component format with enhanced analytics
 function convertApiWebsiteToComponent(apiWebsite: Website, index: number) {
-  console.log('Converting API website:', apiWebsite.domain, 'paid_till:', apiWebsite.paid_till);
-  
+  const tempIndex = (apiWebsite as any).tempIndex || index;
   return {
-    id: index + 1,
-    name: apiWebsite.domain || `Website ${index + 1}`,
-    status: apiWebsite.status || 'draft',
-    lastUpdated: new Date().toISOString().split('T')[0],
-    organizationName: apiWebsite.organization_name,
-    organization_name: apiWebsite.organization_name,
-    organizationType: apiWebsite.organization_type,
-    tagline: apiWebsite.tagline,
-    contactEmail: apiWebsite.contact_email,
-    contactPhone: apiWebsite.contact_phone,
-    address: apiWebsite.address,
-    logo: null,
-    favicon: null,
-    primaryColor: apiWebsite.primary_color,
-    secondaryColor: apiWebsite.secondary_color,
-    font: apiWebsite.font,
-    heroImage: null,
-    bannerImages: [],
-    introText: apiWebsite.intro_text,
-    gallery: [],
-    video: apiWebsite.video_youtube_link,
-    about: apiWebsite.about,
-    mission: apiWebsite.mission,
-    history: apiWebsite.history,
-    team: apiWebsite.team_members || [],
-    services: apiWebsite.services_offerings || [],
-    social: apiWebsite.social_media_links || {},
-    domain: apiWebsite.domain,
-    paidTill: apiWebsite.paid_till,
-    paid_till: apiWebsite.paid_till,
+    id: (apiWebsite as any).Website_id || tempIndex,
+    name: (apiWebsite as any).organization_name || 'Unnamed Website',
+    domain: (apiWebsite as any).domain || '',
+    status: (apiWebsite as any).status || 'draft',
+    plan: 'Premium',
+    lastUpdated: new Date().toISOString(),
     analytics: {
-      visitors: Math.floor(Math.random() * 1000) + 500,
-      pageViews: Math.floor(Math.random() * 3000) + 1000,
-      conversionRate: Math.random() * 5 + 1,
-      revenue: Math.floor(Math.random() * 500) + 100
+      visitors: Math.floor(Math.random() * 1000) + 100,
+      pageViews: Math.floor(Math.random() * 5000) + 500,
+      revenue: Math.floor(Math.random() * 10000) + 1000,
+      conversionRate: +(Math.random() * 5 + 1).toFixed(1)
     },
-    tempIndex: (apiWebsite as any).tempIndex,
+    paid_till: (apiWebsite as any).paid_till,
+    paidTill: (apiWebsite as any).paid_till,
+    paymentStatus: getPaymentStatus((apiWebsite as any).paid_till),
+    tempIndex
   };
 }
 
 // Enhanced payment status logic
 const getPaymentStatus = (paidTill: string | null) => {
-  console.log('getPaymentStatus called with:', paidTill);
-  
-  if (!paidTill || paidTill.trim() === '') {
-    console.log('Payment status: Pending (empty paid_till)');
+  if (!paidTill) {
     return {
       text: 'Pending',
       color: 'bg-red-100 text-red-700 border-red-200',
@@ -88,49 +72,38 @@ const getPaymentStatus = (paidTill: string | null) => {
     };
   }
 
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  const paidDate = new Date(paidTill);
-  const paidMonth = paidDate.getMonth();
-  const paidYear = paidDate.getFullYear();
-
-  console.log('Date comparison:', {
-    today: today.toDateString(),
-    paidDate: paidDate.toDateString(),
-    currentMonth,
-    currentYear,
-    paidMonth,
-    paidYear
-  });
-
-  // Get last day of current month
-  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const endOfMonth = new Date(currentYear, currentMonth, lastDayOfMonth);
-
-  if (paidYear === currentYear && paidMonth === currentMonth) {
-    // Same month - show end of month deadline
-    console.log('Payment status: Due this month');
+  try {
+    const paidDate = new Date(paidTill);
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const paidMonth = paidDate.getMonth();
+    const paidYear = paidDate.getFullYear();
+    
+    if (paidYear < currentYear || (paidYear === currentYear && paidMonth < currentMonth)) {
+      return {
+        text: 'Payment Expired',
+        color: 'bg-red-100 text-red-700 border-red-200',
+        icon: FiAlertCircle
+      };
+    } else if (paidYear === currentYear && paidMonth === currentMonth) {
+      return {
+        text: 'Due this month',
+        color: 'bg-orange-100 text-orange-700 border-orange-200',
+        icon: FiClock
+      };
+    } else {
+      return {
+        text: `Paid: ${paidDate.toLocaleDateString()}`,
+        color: 'bg-green-100 text-green-700 border-green-200',
+        icon: FiCheckCircle
+      };
+    }
+  } catch (error) {
     return {
-      text: `Make payment by ${endOfMonth.toLocaleDateString()}`,
-      color: 'bg-orange-100 text-orange-700 border-orange-200',
-      icon: FiClock
-    };
-  } else if (paidDate < today) {
-    // Past due
-    console.log('Payment status: Expired');
-    return {
-      text: 'Payment Expired, make payment immediately',
+      text: 'Pending',
       color: 'bg-red-100 text-red-700 border-red-200',
-      icon: FiAlertTriangle
-    };
-  } else {
-    // Future date - paid
-    console.log('Payment status: Paid');
-    return {
-      text: `Paid: ${paidDate.toLocaleDateString()}`,
-      color: 'bg-green-100 text-green-700 border-green-200',
-      icon: FiCheckCircle
+      icon: FiAlertCircle
     };
   }
 };
@@ -248,9 +221,14 @@ const WebsiteCard = ({ site, onEdit, onView, onDelete }: any) => {
         {/* Actions */}
         <div className="flex gap-1">
           <button 
-            onClick={() => onEdit(site)}
-            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors duration-200 hover:scale-110"
-            title="Edit Website"
+            onClick={() => site.status !== 'published' && onEdit(site)}
+            disabled={site.status === 'published'}
+            className={`p-2 rounded-lg transition-colors duration-200 ${
+              site.status === 'published'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-50 hover:bg-blue-100 text-blue-600 hover:scale-110'
+            }`}
+            title={site.status === 'published' ? 'Cannot edit published website' : 'Edit Website'}
           >
             <FiEdit2 className="w-4 h-4" />
           </button>
@@ -259,7 +237,7 @@ const WebsiteCard = ({ site, onEdit, onView, onDelete }: any) => {
             className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors duration-200 hover:scale-110"
             title="View Website"
           >
-            <FiExternalLink className="w-4 h-4" />
+            <FiEye className="w-4 h-4" />
           </button>
           <button 
             onClick={() => onDelete(site)}
@@ -361,6 +339,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const previousLocation = useRef<string>('');
 
+  const username = useAuthUser();
+
   // Calculate enhanced totals from analytics
   const totalVisitors = websiteList.reduce((sum, site) => sum + site.analytics.visitors, 0);
   const totalPageViews = websiteList.reduce((sum, site) => sum + site.analytics.pageViews, 0);
@@ -380,7 +360,6 @@ export default function Dashboard() {
       setWebsiteList(convertedWebsites);
       setError(null);
     } catch (err) {
-      console.error('Refresh failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh data');
     } finally {
       setIsRefreshing(false);
@@ -412,7 +391,7 @@ export default function Dashboard() {
       setWebsiteList(convertedWebsites);
       setError(null);
     } catch (err) {
-      console.error('Silent refresh failed, keeping stale data:', err);
+      // Silent failure - keep existing data
     }
   };
 
@@ -445,7 +424,6 @@ export default function Dashboard() {
       if (!silent) setError(null);
       
     } catch (err) {
-      console.error('Failed to load websites:', err);
       if (!silent) {
         setError(err instanceof Error ? err.message : 'Failed to load websites');
         setWebsiteList([]);
@@ -476,20 +454,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (apiWebsites && apiWebsites.length > 0) {
       const cachedWebsites = getCachedWebsites() || [];
-      console.log('Cached websites data:', cachedWebsites.map(w => ({ 
-        domain: (w as any).domain, 
-        paid_till: (w as any).paid_till 
-      })));
-      
       const sorted = [...cachedWebsites].sort((a, b) => ((a as any).tempIndex || 0) - ((b as any).tempIndex || 0));
       const convertedWebsites = sorted.map(convertApiWebsiteToComponent);
-      
-      console.log('Final converted websites:', convertedWebsites.map(w => ({ 
-        name: w.name, 
-        paid_till: w.paid_till,
-        paidTill: w.paidTill 
-      })));
-      
       setWebsiteList(convertedWebsites);
     }
   }, [apiWebsites]);
@@ -633,10 +599,10 @@ export default function Dashboard() {
 
   // Enhanced Error state
   if (error) {
-    const isUnauthorized = error && error.toLowerCase().includes('401');
+    const isUnauthorized = error && (error.toLowerCase().includes('401') || error.toLowerCase().includes('unauthorized') || error.toLowerCase().includes('authentication'));
     const handleRetry = () => {
       if (isUnauthorized) {
-        navigate('/login');
+        logout(); // This will clear auth data and redirect to login
       } else {
         handleRefresh();
       }
@@ -668,7 +634,7 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={handleRetry}
-              className="flex items-center justify-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 hover:scale-105 shadow-lg"
+              className="flex items-center justify-center gap-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
             >
               <FiRefreshCw className="w-4 h-4" />
               {isUnauthorized ? 'Go to Login' : 'Try Again'}
@@ -676,7 +642,7 @@ export default function Dashboard() {
             {!isUnauthorized && (
               <button
                 onClick={handleCreateWebsite}
-                className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 hover:scale-105 shadow-lg"
+                className="flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
               >
                 <FiPlus className="w-4 h-4" />
                 Create Website

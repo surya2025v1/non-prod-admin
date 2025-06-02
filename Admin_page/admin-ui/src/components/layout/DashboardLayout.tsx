@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* User Dropdown */}
           {userMenuOpen && (
-            <div className={`absolute ${expanded ? 'left-4 right-4 bottom-20' : 'left-16 bottom-4'} bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl py-2 z-50 border border-white/20 animate-fadeIn`}>
+            <div className={`absolute ${expanded ? 'left-4 right-4 bottom-20' : 'left-16 bottom-4'} bg-white rounded-2xl shadow-2xl py-2 z-50 border border-gray-200 animate-fadeIn`}>
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold">
@@ -168,23 +168,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               </div>
               
-              <div className="py-2">
+              <div className="py-2 bg-white">
                 <button 
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-primary-50 text-gray-700 flex items-center gap-3 font-medium transition-colors"
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white text-blue-700 hover:bg-blue-50 flex items-center gap-3 font-medium transition-colors"
                   onClick={() => navigate('/profile')}
                 >
                   <FiUser className="text-primary-600" size={20} />
                   View Profile
                 </button>
                 <button 
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-primary-50 text-gray-700 flex items-center gap-3 font-medium transition-colors"
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white text-blue-700 hover:bg-blue-50 flex items-center gap-3 font-medium transition-colors"
                   onClick={handleSettings}
                 >
                   <FiSettings className="text-primary-600" size={20} />
                   Settings
                 </button>
                 <button 
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-3 font-medium transition-colors"
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white text-red-600 hover:bg-red-50 flex items-center gap-3 font-medium transition-colors"
                   onClick={handleLogout}
                 >
                   <FiLogOut size={20} />

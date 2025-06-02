@@ -314,7 +314,7 @@ export default function CreateWebsiteModal({ open, onClose, onComplete, onStepCh
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 md:p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-2 md:p-4">
       <div className="bg-white/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl relative animate-fadeIn overflow-hidden border border-gray-200/50 max-h-[95vh] flex flex-col">
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-indigo-700 px-4 md:px-8 py-4 md:py-6 flex-shrink-0">
@@ -1163,7 +1163,7 @@ export default function CreateWebsiteModal({ open, onClose, onComplete, onStepCh
 
         {/* Confirmation Dialog */}
         {showConfirm && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40">
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-gray-900/60">
             <div className="bg-white rounded-xl shadow-xl p-6 max-w-xs w-full">
               <h3 className="font-bold text-lg mb-2">Unsaved Changes</h3>
               <p className="text-gray-700 mb-4">You have unsaved changes. Are you sure you want to close?</p>

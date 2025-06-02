@@ -71,7 +71,7 @@ export default function UpgradeModal({ open, onClose }: { open: boolean; onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 relative animate-fadeIn overflow-y-auto max-h-[90vh]">
         {/* Close button */}
         <button

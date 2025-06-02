@@ -87,10 +87,22 @@ class ApiError extends Error {
   }
 }
 
+// Handle 401 errors globally
+const handle401Error = () => {
+  // Clear auth data
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_role');
+  localStorage.removeItem('auth_username');
+  sessionStorage.clear();
+  // Redirect to login
+  window.location.href = '/login';
+};
+
 async function makeAuthenticatedRequest<T>(endpoint: string): Promise<T> {
   const { token } = getAuthState();
   
   if (!token) {
+    handle401Error();
     throw new ApiError(401, 'No authentication token available');
   }
 
@@ -103,6 +115,11 @@ async function makeAuthenticatedRequest<T>(endpoint: string): Promise<T> {
         'Content-Type': 'application/json',
       },
     });
+
+    if (response.status === 401) {
+      handle401Error();
+      throw new ApiError(401, 'Authentication failed');
+    }
 
     if (!response.ok) {
       throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
@@ -122,6 +139,7 @@ async function makeAuthenticatedPostRequest<T>(endpoint: string, data: any): Pro
   const { token } = getAuthState();
   
   if (!token) {
+    handle401Error();
     throw new ApiError(401, 'No authentication token available');
   }
 
@@ -135,6 +153,11 @@ async function makeAuthenticatedPostRequest<T>(endpoint: string, data: any): Pro
       },
       body: JSON.stringify(data),
     });
+
+    if (response.status === 401) {
+      handle401Error();
+      throw new ApiError(401, 'Authentication failed');
+    }
 
     if (!response.ok) {
       throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);

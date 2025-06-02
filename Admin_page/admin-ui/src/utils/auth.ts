@@ -27,6 +27,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Global response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth data and redirect to login
+      clearAuthData();
+      // Force navigation to login page
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Store auth data in localStorage
 export const storeAuthData = (data: LoginResponse) => {
   localStorage.setItem(TOKEN_KEY, data.access_token);
@@ -40,6 +54,14 @@ export const clearAuthData = () => {
   localStorage.removeItem(ROLE_KEY);
   localStorage.removeItem(USERNAME_KEY);
   clearWebsitesCache();
+  // Clear session storage as well
+  sessionStorage.clear();
+};
+
+// Logout function
+export const logout = () => {
+  clearAuthData();
+  window.location.href = '/login';
 };
 
 // Get current auth state
@@ -54,6 +76,30 @@ export const getAuthState = (): AuthState => {
     username,
     isAuthenticated: !!token,
   };
+};
+
+// Check if user is authenticated (with token validation)
+export const isUserAuthenticated = (): boolean => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    return false;
+  }
+  
+  // Check if token is expired (basic check)
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    if (payload.exp && payload.exp < currentTime) {
+      clearAuthData();
+      return false;
+    }
+  } catch (error) {
+    // If token is invalid, clear it
+    clearAuthData();
+    return false;
+  }
+  
+  return true;
 };
 
 // Login API call

@@ -32,7 +32,7 @@ interface WebsiteDetailsModalProps {
 export default function WebsiteDetailsModal({ open, onClose, website }: WebsiteDetailsModalProps) {
   if (!open || !website) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-8 relative animate-fadeIn overflow-y-auto max-h-[90vh]">
         <button
           className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
