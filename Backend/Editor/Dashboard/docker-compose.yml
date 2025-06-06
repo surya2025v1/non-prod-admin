@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # FastAPI Application
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql+pymysql://temple_user:temple_password@db:3306/temple_management
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ENVIRONMENT=development
+      - REDIS_URL=redis://redis:6379/0
+      - RATE_LIMIT_REQUESTS=10
+      - RATE_LIMIT_WINDOW=60
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./app:/app/app:ro  # Mount source for development
+    restart: unless-stopped
+
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: temple_management
+      MYSQL_USER: temple_user
+      MYSQL_PASSWORD: temple_password
+      MYSQL_ROOT_PASSWORD: temple_root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis for Rate Limiting
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # Admin tool for MySQL (optional)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: temple_user
+      PMA_PASSWORD: temple_password
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  default:
+    name: temple_network 

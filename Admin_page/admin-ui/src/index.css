@@ -123,7 +123,7 @@ code {
 
 /* DEBUG: Force password toggle button background */
 .login-password-toggle-fix {
-  background: #f3f4f6 !important;
+  background: rgb(255, 255, 255) !important;
   border: none !important;
   box-shadow: none !important;
   color: #4b5563 !important;
