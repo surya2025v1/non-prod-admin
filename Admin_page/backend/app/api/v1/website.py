@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class WebsiteRequest(BaseModel):
-    id: int
+    id: Optional[int] = 0  # Make id optional with default value 0
     name: Optional[str] = None
     organization_name: Optional[str] = None
     organization_type: Optional[str] = None
@@ -48,13 +48,44 @@ class WebsiteRequest(BaseModel):
     is_active: Optional[bool] = None
     page_no: Optional[int] = 1
 
+class DeleteWebsiteRequest(BaseModel):
+    id: int
+
+class AddUserRequest(BaseModel):
+    domain: str
+    first_name: str
+    last_name: str
+    email: str
+    username: str
+    role: str
+    password: str
+    is_active: bool
+
+class ModifyUserRequest(BaseModel):
+    user_id: int
+    domain: str
+    first_name: str
+    last_name: str
+    email: str
+    username: str
+    role: str
+    password: Optional[str] = None
+    is_active: bool
+
+class DeleteUserRequest(BaseModel):
+    user_id: int
+    domain: str
+
 @router.post("/my_website")
 async def create_or_update_website(
     payload: WebsiteRequest,
     current_user: TokenData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    logger.info(f"Website request for user: {current_user.username}, ID: {payload.id}")
+    # Handle None/null ID by treating it as 0 (new website)
+    website_id = payload.id if payload.id is not None else 0
+    
+    logger.info(f"Website request for user: {current_user.username}, ID: {website_id}")
     
     user = get_user_by_username(db, current_user.username)
     if not user:
@@ -62,15 +93,15 @@ async def create_or_update_website(
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
-        if payload.id == 0:
+        if website_id == 0:
             # INSERT operation - create new record with defaults
             logger.info(f"Creating new website for user {user.id}")
             website = create_website_with_defaults(db, user.id, payload.dict(exclude_unset=True, exclude={'id'}))
             return {"success": True, "website_id": website.id, "message": "Website created successfully"}
         else:
             # UPDATE operation - update existing record
-            logger.info(f"Updating website {payload.id} for user {user.id}")
-            website = update_website_by_id(db, payload.id, user.id, payload.dict(exclude_unset=True, exclude={'id'}))
+            logger.info(f"Updating website {website_id} for user {user.id}")
+            website = update_website_by_id(db, website_id, user.id, payload.dict(exclude_unset=True, exclude={'id'}))
             if not website:
                 raise HTTPException(status_code=404, detail="Website not found or you don't have permission to update it")
             return {"success": True, "website_id": website.id, "message": "Website updated successfully"}
@@ -152,9 +183,6 @@ async def my_website(
     logger.info(f"Returning {len(result)} websites with full data")
     return result
 
-class DeleteWebsiteRequest(BaseModel):
-    id: int
-
 @router.post("/delete_mysite")
 async def delete_mysite(
     payload: DeleteWebsiteRequest,
@@ -199,14 +227,7 @@ async def get_roles(
 
 @router.post('/add_user')
 async def add_user(
-    domain: str = Body(...),
-    first_name: str = Body(...),
-    last_name: str = Body(...),
-    email: str = Body(...),
-    username: str = Body(...),
-    role: str = Body(...),
-    password: str = Body(...),
-    is_active: bool = Body(...),
+    payload: AddUserRequest,
     current_user: TokenData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -219,23 +240,26 @@ async def add_user(
         raise HTTPException(status_code=404, detail="User not found")
     owner_id = owner.id
     # Get client DB session
-    session = client_db_manager.get_client_session(domain, owner_id)
+    session = client_db_manager.get_client_session(payload.domain, owner_id)
     if not session:
         raise HTTPException(status_code=500, detail="Client database not found")
     try:
-        hashed_pw = get_password_hash(password)
+        hashed_pw = get_password_hash(payload.password)
+        # Convert is_active to boolean if it's an integer (0/1)
+        is_active_bool = bool(payload.is_active) if isinstance(payload.is_active, int) else payload.is_active
+        
         sql = text("""
             INSERT INTO users (first_name, last_name, email, username, role, password_hash, is_active, created_at, updated_at, salt)
             VALUES (:first_name, :last_name, :email, :username, :role, :password_hash, :is_active, NOW(), NOW(),'dummy')
         """)
         session.execute(sql, {
-            'first_name': first_name,
-            'last_name': last_name,
-            'email': email,
-            'username': username,
-            'role': role,
+            'first_name': payload.first_name,
+            'last_name': payload.last_name,
+            'email': payload.email,
+            'username': payload.username,
+            'role': payload.role,
             'password_hash': hashed_pw,
-            'is_active': is_active
+            'is_active': is_active_bool
         })
         session.commit()
         return {"status": "success", "message": "User added successfully"}
@@ -247,15 +271,7 @@ async def add_user(
 
 @router.post('/modify_user')
 async def modify_user(
-    user_id: int = Body(...),
-    domain: str = Body(...),
-    first_name: str = Body(...),
-    last_name: str = Body(...),
-    email: str = Body(...),
-    username: str = Body(...),
-    role: str = Body(...),
-    password: str = Body(None),
-    is_active: bool = Body(...),
+    payload: ModifyUserRequest,
     current_user: TokenData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -266,10 +282,13 @@ async def modify_user(
     if not owner:
         raise HTTPException(status_code=404, detail="User not found")
     owner_id = owner.id
-    session = client_db_manager.get_client_session(domain, owner_id)
+    session = client_db_manager.get_client_session(payload.domain, owner_id)
     if not session:
         raise HTTPException(status_code=500, detail="Client database not found")
     try:
+        # Convert is_active to boolean if it's an integer (0/1)
+        is_active_bool = bool(payload.is_active) if isinstance(payload.is_active, int) else payload.is_active
+        
         update_fields = [
             'first_name = :first_name',
             'last_name = :last_name',
@@ -280,17 +299,17 @@ async def modify_user(
             'updated_at = NOW()'
         ]
         params = {
-            'first_name': first_name,
-            'last_name': last_name,
-            'email': email,
-            'username': username,
-            'role': role,
-            'is_active': is_active,
-            'user_id': user_id
+            'first_name': payload.first_name,
+            'last_name': payload.last_name,
+            'email': payload.email,
+            'username': payload.username,
+            'role': payload.role,
+            'is_active': is_active_bool,
+            'user_id': payload.user_id
         }
-        if password:
+        if payload.password:
             update_fields.append('password_hash = :password_hash')
-            params['password_hash'] = get_password_hash(password)
+            params['password_hash'] = get_password_hash(payload.password)
         sql = text(f"""
             UPDATE users SET {', '.join(update_fields)} WHERE id = :user_id
         """)
@@ -307,8 +326,7 @@ async def modify_user(
 
 @router.post('/delete_user')
 async def delete_user(
-    user_id: int = Body(...),
-    domain: str = Body(...),
+    payload: DeleteUserRequest,
     current_user: TokenData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -319,14 +337,14 @@ async def delete_user(
     if not owner:
         raise HTTPException(status_code=404, detail="User not found")
     owner_id = owner.id
-    session = client_db_manager.get_client_session(domain, owner_id)
+    session = client_db_manager.get_client_session(payload.domain, owner_id)
     if not session:
         raise HTTPException(status_code=500, detail="Client database not found")
     try:
         sql = text("""
             DELETE FROM users WHERE id=:user_id
         """)
-        result = session.execute(sql, {'user_id': user_id})
+        result = session.execute(sql, {'user_id': payload.user_id})
         session.commit()
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="User not found in client DB")

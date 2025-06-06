@@ -32,14 +32,19 @@ interface WebsiteDetailsModalProps {
 export default function WebsiteDetailsModal({ open, onClose, website }: WebsiteDetailsModalProps) {
   if (!open || !website) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-8 relative animate-fadeIn overflow-y-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-8 relative animate-fadeIn overflow-y-auto max-h-[90vh] border border-gray-200">
         <button
-          className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          style={{ 
+            backgroundColor: '#f3f4f6', 
+            padding: '0',
+            border: 'none'
+          }}
           onClick={onClose}
           aria-label="Close"
         >
-          <FiX size={20} />
+          <FiX size={16} />
         </button>
         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Website Details</h2>
         <div className="divide-y divide-gray-200">

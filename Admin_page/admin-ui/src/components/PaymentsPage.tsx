@@ -57,7 +57,7 @@ function PaymentDetailsModal({ open, onClose, payment }: {
   if (!open || !payment) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl relative animate-fadeIn border border-gray-100">
         
         {/* Header */}
@@ -73,9 +73,9 @@ function PaymentDetailsModal({ open, onClose, payment }: {
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
-            <FiX className="w-6 h-6 text-gray-500" />
+            <FiX className="w-4 h-4" />
           </button>
         </div>
 
@@ -246,7 +246,7 @@ function MakePaymentModal({ open, onClose, website, amount }: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg relative animate-fadeIn border border-gray-100">
         
         {/* Header */}

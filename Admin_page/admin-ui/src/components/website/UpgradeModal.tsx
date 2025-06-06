@@ -71,15 +71,15 @@ export default function UpgradeModal({ open, onClose }: { open: boolean; onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 relative animate-fadeIn overflow-y-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 relative animate-fadeIn overflow-y-auto max-h-[90vh] border border-gray-200">
         {/* Close button */}
         <button
-          className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
           onClick={onClose}
           aria-label="Close"
         >
-          <FiX size={20} />
+          <FiX size={16} />
         </button>
 
         {paymentStep === 'plan' ? (

@@ -271,10 +271,20 @@ export default function Signup() {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                          style={{ 
+                            backgroundColor: '#f3f4f6 !important', 
+                            padding: '0 !important',
+                            border: 'none !important',
+                            width: '2rem !important',
+                            height: '2rem !important',
+                            color: '#4b5563 !important',
+                            borderRadius: '9999px !important'
+                          }}
                           tabIndex={-1}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
-                          {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                          {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
                         </button>
                       </div>
                     </div>
@@ -308,10 +318,20 @@ export default function Signup() {
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                          style={{ 
+                            backgroundColor: '#f3f4f6 !important', 
+                            padding: '0 !important',
+                            border: 'none !important',
+                            width: '2rem !important',
+                            height: '2rem !important',
+                            color: '#4b5563 !important',
+                            borderRadius: '9999px !important'
+                          }}
                           tabIndex={-1}
+                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                         >
-                          {showConfirmPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                          {showConfirmPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
                         </button>
                       </div>
                     </div>

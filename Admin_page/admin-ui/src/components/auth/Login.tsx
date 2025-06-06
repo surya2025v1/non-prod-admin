@@ -196,10 +196,21 @@ export default function Login() {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                          style={{
+                            background: '#ff00ff', // BRIGHT MAGENTA for test
+                            border: 'none',
+                            boxShadow: 'none',
+                            color: '#4b5563',
+                            width: '2rem',
+                            height: '2rem',
+                            borderRadius: '9999px',
+                            padding: 0,
+                            outline: 'none',
+                          }}
                           tabIndex={-1}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                         >
-                          {showPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                          {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
                         </button>
                       </div>
                     </div>

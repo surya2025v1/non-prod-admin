@@ -708,8 +708,8 @@ const UserFormModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">
@@ -717,9 +717,9 @@ const UserFormModal = ({
             </h2>
             <button
               onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-xl transition-colors border border-gray-200 shadow-sm"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
             >
-              <FiX className="w-6 h-6" />
+              <FiX className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -897,7 +897,7 @@ const ConfirmationModal = ({
     : 'bg-blue-600 hover:bg-blue-700 text-white';
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
@@ -935,7 +935,7 @@ const UserDetailsModal = ({
   if (!isOpen || !user) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">

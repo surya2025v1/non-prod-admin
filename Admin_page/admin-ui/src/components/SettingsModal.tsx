@@ -83,22 +83,32 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const avatarLetter = firstName ? firstName[0].toUpperCase() : username ? username[0].toUpperCase() : 'U';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg relative animate-fadeIn border border-gray-200/50 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+      <div className="bg-white backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg relative animate-fadeIn border border-gray-200/50 overflow-hidden">
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-indigo-700 px-8 py-6">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white rounded-full animate-bounce"></div>
-          </div>
+        <div className="relative overflow-hidden bg-white px-8 py-6 border-b border-gray-100">
+          {/* Close Button */}
+          <button
+            type="button"
+            className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            style={{ 
+              backgroundColor: '#f3f4f6', 
+              padding: '0',
+              border: 'none',
+              fontSize: '1.125rem'
+            }}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
           
-          <div className="relative text-center">
+          <div className="relative text-center pr-12">
             <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary-300 to-primary-500 flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-xl">
               {avatarLetter}
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Account Settings</h2>
-            <p className="text-blue-100">Manage your profile information</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Settings</h2>
+            <p className="text-gray-600">Manage your profile information</p>
           </div>
         </div>
 

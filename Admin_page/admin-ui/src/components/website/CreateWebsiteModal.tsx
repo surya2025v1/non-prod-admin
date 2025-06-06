@@ -314,32 +314,36 @@ export default function CreateWebsiteModal({ open, onClose, onComplete, onStepCh
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-2 md:p-4">
-      <div className="bg-white/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl relative animate-fadeIn overflow-hidden border border-gray-200/50 max-h-[95vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-2 md:p-4">
+      <div className="bg-white backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl relative animate-fadeIn overflow-hidden border border-gray-200/50 max-h-[95vh] flex flex-col">
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-indigo-700 px-4 md:px-8 py-4 md:py-6 flex-shrink-0">
+        <div className="relative overflow-hidden bg-white px-4 md:px-8 py-4 md:py-6 flex-shrink-0 border-b border-gray-100">
           {/* Close Button */}
           <button
             type="button"
-            className="absolute top-4 right-4 z-10 text-white hover:text-gray-200 text-xl font-bold focus:outline-none"
+            className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 text-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            style={{ 
+              backgroundColor: '#f3f4f6 !important', 
+              padding: '0 !important',
+              border: 'none !important',
+              fontSize: '1.125rem !important',
+              width: '2rem !important',
+              height: '2rem !important',
+              color: '#4b5563 !important'
+            }}
             onClick={handleClose}
             aria-label="Close"
           >
             ×
           </button>
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-white rounded-full animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 md:w-16 md:h-16 bg-white rounded-full animate-bounce"></div>
-          </div>
           
-          <div className="relative">
-            <h2 className="text-lg md:text-2xl font-bold text-white mb-2">
+          <div className="relative pr-12">
+            <h2 className="text-lg md:text-2xl font-bold text-gray-900 mb-2">
               {editMode ? 'Edit Website' : 'Create New Website'}
             </h2>
-            <p className="text-blue-100 text-sm md:text-base">{steps[step].name}</p>
+            <p className="text-gray-600 text-sm md:text-base">{steps[step].name}</p>
             {websiteId > 0 && (
-              <p className="text-blue-200 text-xs md:text-sm">Website ID: {websiteId}</p>
+              <p className="text-gray-500 text-xs md:text-sm">Website ID: {websiteId}</p>
             )}
           </div>
         </div>
@@ -1163,19 +1167,19 @@ export default function CreateWebsiteModal({ open, onClose, onComplete, onStepCh
 
         {/* Confirmation Dialog */}
         {showConfirm && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-gray-900/60">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-xs w-full">
-              <h3 className="font-bold text-lg mb-2">Unsaved Changes</h3>
-              <p className="text-gray-700 mb-4">You have unsaved changes. Are you sure you want to close?</p>
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-xs w-full border border-gray-200">
+              <h3 className="font-bold text-lg mb-2 text-gray-900">Unsaved Changes</h3>
+              <p className="text-gray-600 mb-4">You have unsaved changes. Are you sure you want to close?</p>
               <div className="flex justify-end gap-3">
                 <button
-                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                   onClick={() => setShowConfirm(false)}
                 >
                   Cancel
                 </button>
                 <button
-                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
                   onClick={() => { setShowConfirm(false); onClose(); }}
                 >
                   Discard Changes

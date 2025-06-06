@@ -1,16 +1,10 @@
-from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import FastAPI
 
 app = FastAPI()
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
+# This is a placeholder file. The actual application is in app/main.py
+# Run with: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-@app.post("/api/v1/login")
-async def login(request: LoginRequest):
-    # Placeholder logic for login validation
-    if request.username == "admin" and request.password == "admin":
-        return {"status": "success", "message": "Login successful"}
-    else:
-        raise HTTPException(status_code=401, detail="Invalid username or password") 
+@app.get("/")
+async def root():
+    return {"message": "Please use 'uvicorn app.main:app' to run the actual application"} 
